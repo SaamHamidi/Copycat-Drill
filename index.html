@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17181b">
+  <title>Rhythm Trainer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <h1>Taiko Rhythm Trainer</h1>
+      <h6> Call and Response </h6>
+      <style>
+        h6 {
+            font-size: 1.25em;
+            font-weight: regular;
+            margin-bottom: 5px;
+            margin-top: 15px;
+        }
+        h1 {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+      </style>
+      <p>Continously generate rhythms to listen to and play them back.</p>
+      <h6> Sequencer (Loop mode) </h6>
+       <p>Create a custom groove by editing the grid directly. Swap in custom samples.</p>
+      
+    </header>
+
+    <div id="notice" class="notice" role="alert" hidden></div>
+
+  
+    <details class="card hero fold" id="patternFold" aria-labelledby="patternTitle" open>
+      <summary>
+        <h2 id="patternTitle">Current rhythm</h2>
+        <div class="legend" aria-hidden="true">
+          <span class="chip don">Hit</span>
+          <span class="chip ka">Accent</span>
+        </div>
+      </summary>
+      <div id="pattern" class="pattern" role="group" aria-label="Current rhythm, editable"></div>
+      <p class="hint">Tap any box to cycle through sounds.</p>
+    </details>
+
+    <div class="toggle-row">
+      <label class="card switch-row" for="swing">
+        <span class="switch-text">
+          <span class="switch-title">Swing mode</span>
+          <span class="hint">Triplet grid. Hits land on the 1st and 3rd triplet of each beat.</span>
+        </span>
+        <input id="swing" type="checkbox" role="switch" autocomplete="off">
+        <span class="switch-track" aria-hidden="true"></span>
+      </label>
+
+      <label class="card switch-row" for="loop">
+        <span class="switch-text">
+          <span class="switch-title">Loop mode</span>
+          <span class="hint">The current rhythm repeats on its own, with no turns in between.</span>
+        </span>
+        <input id="loop" type="checkbox" role="switch" autocomplete="off">
+        <span class="switch-track" aria-hidden="true"></span>
+      </label>
+    </div>
+
+    <div class="settings">
+      <details class="card fold" aria-labelledby="feelTitle" open>
+        <summary><h2 id="feelTitle">Tempo and Generator Settings</h2></summary>
+
+        <div class="slider">
+          <div class="slider-head">
+            <label for="bpm">Tempo</label>
+            <span class="value"><span id="bpmValue">100</span> BPM</span>
+          </div>
+          <div class="nudge-row">
+            <button type="button" class="nudge" data-target="bpm" data-nudge="-1" aria-label="Slower">−</button>
+            <input id="bpm" type="range" min="30" max="240" value="100">
+            <button type="button" class="nudge" data-target="bpm" data-nudge="1" aria-label="Faster">+</button>
+          </div>
+        </div>
+
+        <div class="slider">
+          <div class="slider-head">
+            <label for="density">Density</label>
+            <span class="value" id="densityValue">0.50</span>
+          </div>
+          <input id="density" type="range" min="0" max="1" step="0.01" value="0.5">
+          <p class="hint">Frequency of hits.</p>
+        </div>
+
+        <div class="slider" id="syncopationField">
+          <div class="slider-head">
+            <label for="syncopation">Syncopation</label>
+            <span class="value" id="syncValue">0.00</span>
+          </div>
+          <input id="syncopation" type="range" min="-1" max="1" step="0.01" value="0">
+          <p class="hint" id="syncHint">−1 favors the beat, +1 favors the off-beats.</p>
+        </div>
+
+        <div class="slider">
+          <div class="slider-head">
+            <label for="accentChance">Accent chance</label>
+            <span class="value" id="accentValue">0.25</span>
+          </div>
+          <input id="accentChance" type="range" min="0" max="1" step="0.01" value="0.25">
+          <p class="hint">Chance that a hit is an accent.</p>
+        </div>
+      </details>
+
+      <details class="card fold" aria-labelledby="structureTitle" open>
+        <summary><h2 id="structureTitle">Structure</h2></summary>
+
+        <div class="fields">
+          <div class="field">
+            <label for="measures">Measures</label>
+            <div class="stepper">
+              <button type="button" data-dir="-1" aria-label="Fewer measures">−</button>
+              <input id="measures" type="number" min="1" max="16" value="1" inputmode="numeric">
+              <button type="button" data-dir="1" aria-label="More measures">+</button>
+            </div>
+            <p class="hint">Per rhythm</p>
+          </div>
+
+          <div class="field">
+            <label for="beats">Beats</label>
+            <div class="stepper">
+              <button type="button" data-dir="-1" aria-label="Fewer beats">−</button>
+              <input id="beats" type="number" min="1" max="16" value="4" inputmode="numeric">
+              <button type="button" data-dir="1" aria-label="More beats">+</button>
+            </div>
+            <p class="hint">Per measure</p>
+          </div>
+
+          <div class="field">
+            <label for="subdivision">Subdivision</label>
+            <div class="stepper">
+              <button type="button" data-dir="-1" aria-label="Fewer subdivisions">−</button>
+              <input id="subdivision" type="text" min="1" max="8" value="4" data-values="1,2,3,4,5,6,7,8" readonly inputmode="none">
+              <button type="button" data-dir="1" aria-label="More subdivisions">+</button>
+            </div>
+            <p class="hint" id="subdivisionHint">16th notes</p>
+          </div>
+
+          <div class="field">
+            <label for="repeats">Listen repeats</label>
+            <div class="stepper">
+              <button type="button" data-dir="-1" aria-label="Fewer listen repeats">−</button>
+              <input id="repeats" type="number" min="1" max="20" value="2" inputmode="numeric">
+              <button type="button" data-dir="1" aria-label="More listen repeats">+</button>
+            </div>
+            <p class="hint" id="repeatsHint">Repeats per rhythm</p>
+          </div>
+
+          <div class="field">
+            <label for="metro">Metronome</label>
+            <select id="metro">
+              <option value="onbeat" selected>On beat</option>
+              <option value="offbeat">Off beat</option>
+              <option value="mute">Mute</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <details class="card fold">
+      <summary>Sounds</summary>
+      <p class="hint">Change the default sounds of the metronome, regular hit, and accented hit.</p>
+      <div class="sound-row">
+        <div class="sound-card">
+          <strong>Click</strong>
+          <span id="clickName">click.wav</span>
+          <div class="sound-actions">
+            <button id="previewClick" type="button" class="btn small ghost">Preview</button>
+            <label class="btn small ghost file">Replace<input id="clickFile" type="file" accept="audio/*"></label>
+          </div>
+        </div>
+        <div class="sound-card">
+          <strong>Hit (Don)</strong>
+          <span id="hitName">don.wav</span>
+          <div class="sound-actions">
+            <button id="previewHit" type="button" class="btn small ghost">Preview</button>
+            <label class="btn small ghost file">Replace<input id="hitFile" type="file" accept="audio/*"></label>
+          </div>
+        </div>
+        <div class="sound-card">
+          <strong>Accent (Ka)</strong>
+          <span id="accentName">ka.wav</span>
+          <div class="sound-actions">
+            <button id="previewAccent" type="button" class="btn small ghost">Preview</button>
+            <label class="btn small ghost file">Replace<input id="accentFile" type="file" accept="audio/*"></label>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- <details class="card fold">
+      <summary>How it works</summary>
+      <p>Each session starts with a 4-count intro. Then a new rhythm is generated: you hear it, get a turn with only the metronome, hear it again, and get another turn. Your turn is always the same length as the rhythm's measures. After the last turn a new rhythm begins. Every click, don and ka is scheduled on the Web Audio clock so they stay locked together at any tempo.</p>
+      <p class="more">Swing mode uses a fixed triplet grid. Hits only land on the 1st and 3rd triplet of each beat, syncopation isn't used, and the on-beat click plays every 2 beats (half-time), with an 8-beat intro that still gives 4 clicks.</p>
+      <p class="more">Tap any box in the rhythm to edit it directly, or use Previous to swap back to the rhythm you just moved on from.</p>
+      <p class="more">Loop mode skips your turn entirely: after the count-in, the current rhythm just repeats with the metronome for as long as it's on.</p>
+    </details>
+  </main> -->
+
+  <div id="dock" class="dock" data-phase="idle">
+    <div class="dock-inner">
+      <div class="now">
+        <span class="dot" aria-hidden="true"></span>
+        <div class="now-text">
+          <div id="status" aria-live="polite">Ready</div>
+          <div id="count">—</div>
+        </div>
+      </div>
+
+      <button id="previous" type="button" class="btn ghost" aria-label="Previous rhythm" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M11 5L4 12l7 7M4 12h16"/></svg>
+        <span>Previous</span>
+      </button>
+      <button id="generate" type="button" class="btn ghost" aria-label="New rhythm">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+        <span>New rhythm</span>
+      </button>
+      <button id="start" type="button" class="btn primary">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l13-7.5z"/></svg>
+        Start
+      </button>
+      <button id="stop" type="button" class="btn stop" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>
+        Stop
+      </button>
+    </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
