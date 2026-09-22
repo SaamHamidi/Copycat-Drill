@@ -686,6 +686,52 @@ function waitUntil(audioTime, gen) {
 /* drifts and there are no gaps between phases.                        */
 /* ------------------------------------------------------------------ */
 
+const beatText = (i, s, measures) => {
+  const beat = Math.floor(i / s.subdivision) % s.beats + 1;
+  const measure = Math.floor(i / (s.beats * s.subdivision)) + 1;
+  return measures > 1
+    ? `Measure ${measure} · Beat ${beat} of ${s.beats}`
+    : `Beat ${beat} of ${s.beats}`;
+};
+
+// Schedules `total` steps of `stepsPattern` starting at `phaseStart`, using
+// the same short-lookahead approach as loop mode (see runLoopMode below):
+// only the next ~150ms of audio is ever committed to the Web Audio graph at
+// a time, and each step's value is read right before it's due rather than
+// all at once when the phase begins. That's what lets a tap on the diagram
+// change what's about to play within a step or two — previously the whole
+// phase was scheduled (and therefore fixed) the instant it started, so an
+// edit mid-Listen had no audible effect until the *next* rhythm.
+//
+// `stepsPattern` is read live on every tick rather than captured once, so as
+// long as it's the same array object the diagram edits are mutating (which
+// it is — see the Listen phase below), edits take effect immediately.
+// Runs asynchronously in the background; callers don't await it.
+async function scheduleSteps(gen, alive, stepsPattern, cycle, phaseStart, step, total) {
+  const LOOKAHEAD = 0.15;
+  const TICK_MS = 25;
+  let nextTime = phaseStart;
+  let i = 0;
+
+  while (alive() && i < total) {
+    const s = live(cycle);
+    while (alive() && i < total && nextTime < audioCtx.currentTime + LOOKAHEAD) {
+      const when = nextTime;
+      const idx = i;
+      if (metroAtStep(idx, s)) playClick(when);
+      playStep(stepsPattern[idx], when);
+      at(when, () => {
+        highlight(idx);
+        if (idx % cycle.subdivision === 0) setCount(beatText(idx, cycle, cycle.measures));
+      }, gen);
+      nextTime += step;
+      i++;
+    }
+    if (i >= total) break;
+    await new Promise(resolve => setTimeout(resolve, TICK_MS));
+  }
+}
+
 async function runSession(gen) {
   const alive = () => running && gen === generation;
   let t = audioCtx.currentTime + 0.15;
@@ -709,14 +755,6 @@ async function runSession(gen) {
     t = schedule(start);
     await waitUntil(start, gen);
   }
-
-  const beatText = (i, s, measures) => {
-    const beat = Math.floor(i / s.subdivision) % s.beats + 1;
-    const measure = Math.floor(i / (s.beats * s.subdivision)) + 1;
-    return measures > 1
-      ? `Measure ${measure} · Beat ${beat} of ${s.beats}`
-      : `Beat ${beat} of ${s.beats}`;
-  };
 
   // 4-count intro, once per Start (like eight_count_intro() in the Python).
   // Swing mode: 8-beat intro with a half-time click, still 4 clicks total.
@@ -778,15 +816,11 @@ async function runSession(gen) {
           }
         }, gen);
 
-        cyclePattern.forEach((value, i) => {
-          const when = start + i * step;
-          if (metroAtStep(i, s)) playClick(when);
-          playStep(value, when);
-          at(when, () => {
-            highlight(i);
-            if (i % cycle.subdivision === 0) setCount(beatText(i, cycle, cycle.measures));
-          }, gen);
-        });
+        // Reads cyclePattern live, step by step, so editing the diagram
+        // (which mutates this same array in place — see cycleStep) changes
+        // what plays within a step or two, instead of the whole phase's
+        // sounds already being locked in the moment it started.
+        scheduleSteps(gen, alive, cyclePattern, cycle, start, step, cyclePattern.length);
         return start + cyclePattern.length * step;
       });
 
